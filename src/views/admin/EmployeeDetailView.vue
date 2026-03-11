@@ -1,11 +1,12 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Leaf, Trash2, FileText, Zap, Map, TrendingDown, TrendingUp,
-  Cog, Truck, Microscope, Megaphone, FolderOpen, Users
+  Cog, Truck, Microscope, Megaphone, FolderOpen, Users, ClipboardList,
+  ChevronLeft, ChevronRight
 } from 'lucide-vue-next'
-import { allEmployees, deptConfig, deptAvg } from '@/data/employeeData.js'
+import { allEmployees, deptConfig, deptAvg, generateLogs } from '@/data/employeeData.js'
 
 const route  = useRoute()
 const router = useRouter()
@@ -57,6 +58,38 @@ const comparison = computed(() => {
     { label: '差旅里程',   icon: Map,      color: '#5b8ff9', unit: 'km',    personal: e.travel,        deptAvg: a.travel,        diff: +(e.travel         - a.travel       ).toFixed(0) },
   ]
 })
+
+// ── 活動記錄檔 ────────────────────────────────────────────────
+const logIcons  = { waste: Trash2, paper: FileText, electricity: Zap, travel: Map }
+const filterType  = ref('all')
+const filterMonth = ref('')
+const currentPage = ref(0)
+const PAGE_SIZE   = 15
+
+watch([filterType, filterMonth], () => { currentPage.value = 0 })
+
+const allLogs = computed(() => emp.value ? generateLogs(emp.value) : [])
+
+const logTypeTabs = computed(() => [
+  { value: 'all',         label: '全部',   icon: ClipboardList, count: allLogs.value.length },
+  { value: 'waste',       label: '廢棄物', icon: Trash2,        count: allLogs.value.filter(l => l.type === 'waste').length },
+  { value: 'paper',       label: '紙張',   icon: FileText,      count: allLogs.value.filter(l => l.type === 'paper').length },
+  { value: 'electricity', label: '用電',   icon: Zap,           count: allLogs.value.filter(l => l.type === 'electricity').length },
+  { value: 'travel',      label: '差旅',   icon: Map,           count: allLogs.value.filter(l => l.type === 'travel').length },
+])
+
+const filteredLogs = computed(() =>
+  allLogs.value.filter(log => {
+    const typeOk  = filterType.value === 'all' || log.type === filterType.value
+    const monthOk = !filterMonth.value || log.datetime.slice(5, 7) === filterMonth.value
+    return typeOk && monthOk
+  })
+)
+
+const totalPages    = computed(() => Math.ceil(filteredLogs.value.length / PAGE_SIZE))
+const paginatedLogs = computed(() =>
+  filteredLogs.value.slice(currentPage.value * PAGE_SIZE, (currentPage.value + 1) * PAGE_SIZE)
+)
 </script>
 
 <template>
@@ -202,6 +235,63 @@ const comparison = computed(() => {
           </table>
         </div>
       </div>
+
+      <!-- ── 活動記錄檔 ──────────────────────────────────── -->
+      <div class="card">
+        <div class="log-head">
+          <div>
+            <h3 class="card-title">活動記錄檔</h3>
+            <p class="card-sub">廢棄物、紙張、用電及差旅的詳細紀錄（2025 年）</p>
+          </div>
+          <select v-model="filterMonth" class="log-select">
+            <option value="">全年</option>
+            <option v-for="(m, i) in months" :key="i" :value="String(i+1).padStart(2,'0')">{{ m }}</option>
+          </select>
+        </div>
+
+        <div class="log-type-tabs">
+          <button
+            v-for="tab in logTypeTabs" :key="tab.value"
+            class="log-tab"
+            :class="{ active: filterType === tab.value }"
+            @click="filterType = tab.value"
+          >
+            <component :is="tab.icon" :size="13" />
+            <span>{{ tab.label }}</span>
+            <span class="log-tab-count">{{ tab.count }}</span>
+          </button>
+        </div>
+
+        <div class="log-list">
+          <div v-for="(log, i) in paginatedLogs" :key="i" class="log-item">
+            <div class="log-date-col">
+              <span class="log-month">{{ log.datetime.slice(5, 7) }}月{{ log.datetime.slice(8, 10) }}日</span>
+              <span class="log-time-stamp">{{ log.datetime.slice(11) }}</span>
+            </div>
+            <div class="log-icon-wrap" :style="{ background: log.color + '22' }">
+              <component :is="logIcons[log.type]" :size="14" :color="log.color" />
+            </div>
+            <div class="log-content">
+              <div class="log-note">{{ log.note }}</div>
+              <div class="log-meta">{{ log.datetime.slice(0, 10) }}</div>
+            </div>
+            <span class="log-amount" :style="{ color: log.color }">
+              {{ log.amount }}<em>{{ log.unit }}</em>
+            </span>
+          </div>
+          <div v-if="filteredLogs.length === 0" class="log-empty">此篩選範圍無記錄</div>
+        </div>
+
+        <div v-if="totalPages > 1" class="log-pagination">
+          <button class="pg-btn" :disabled="currentPage === 0" @click="currentPage--">
+            <ChevronLeft :size="14" />
+          </button>
+          <span class="pg-info">{{ currentPage + 1 }} / {{ totalPages }}（共 {{ filteredLogs.length }} 筆）</span>
+          <button class="pg-btn" :disabled="currentPage >= totalPages - 1" @click="currentPage++">
+            <ChevronRight :size="14" />
+          </button>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -332,4 +422,89 @@ const comparison = computed(() => {
 }
 .status-badge.above { background: #fff1f0; color: #f5222d; }
 .status-badge.below { background: #f6ffed; color: #389e0d; }
+
+/* ── Activity Log ─────────────────────────────────── */
+.log-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.log-head .card-title { margin-bottom: 2px; }
+.log-head .card-sub   { margin-bottom: 0; }
+
+.log-select {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid #e8eaef; background: #f5f7fa;
+  border-radius: 8px; padding: 6px 28px 6px 12px; font-size: 12px;
+  font-weight: 600; color: #333; cursor: pointer; outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235b8ff9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 8px 5px;
+  transition: border-color .15s;
+}
+.log-select:hover { border-color: #5b8ff9; }
+
+.log-type-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.log-tab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  border: 1px solid #e8eaef; background: #fff; color: #595959;
+  cursor: pointer; transition: all .15s;
+}
+.log-tab:hover  { border-color: #5b8ff9; color: #5b8ff9; }
+.log-tab.active { background: #5b8ff9; border-color: #5b8ff9; color: #fff; }
+.log-tab-count {
+  background: rgba(0,0,0,.08); border-radius: 10px;
+  padding: 1px 6px; font-size: 11px;
+}
+.log-tab.active .log-tab-count { background: rgba(255,255,255,.25); }
+
+.log-list { display: flex; flex-direction: column; }
+
+.log-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #f0f2f5;
+  transition: background .12s;
+  border-radius: 6px;
+}
+.log-item:hover { background: #f8faff; }
+.log-item:last-child { border-bottom: none; }
+
+.log-date-col {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 32px; flex-shrink: 0;
+}
+.log-month { font-size: 11px; color: #1a1a2e; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.log-time-stamp { font-size: 10px; color: #7c8db5; font-weight: 500; letter-spacing: 0.3px; margin-top: 2px; }
+
+.log-icon-wrap {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.log-content  { flex: 1; min-width: 0; }
+.log-note     { font-size: 13px; font-weight: 600; color: #333; }
+.log-meta     { font-size: 11px; color: #b0b7c3; margin-top: 1px; }
+
+.log-amount { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.log-amount em { font-style: normal; font-size: 11px; font-weight: 400; margin-left: 2px; }
+
+.log-empty {
+  text-align: center; padding: 32px;
+  color: #b0b7c3; font-size: 13px;
+}
+
+.log-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; padding-top: 14px; border-top: 1px solid #f0f2f5; margin-top: 4px;
+}
+.pg-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid #e8eaef; background: #f5f7fa;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; color: #5b8ff9;
+}
+.pg-btn:disabled { color: #ccc; cursor: not-allowed; }
+.pg-btn:not(:disabled):hover { background: #e5edff; border-color: #5b8ff9; }
+.pg-info { font-size: 12px; color: #8c8c8c; font-weight: 500; }
 </style>

@@ -60,3 +60,87 @@ export const allEmployees = [
   { id: 30, name: '石雅涵', dept: '人資部', role: '教育訓練師',     emissions: 2.8, waste:  28, paper: 12.2, electricity:  680, travel: 1200, trend: '-1.1%', up: false },
   { id: 31, name: '孫怡婷', dept: '人資部', role: '薪資福利專員',   emissions: 2.4, waste:  25, paper: 18.5, electricity:  620, travel:  400, trend: '-2.0%', up: false },
 ]
+
+// ── 活動記錄檔產生器（依員工 id 決定性隨機）────────────────────
+export function generateLogs(emp) {
+  let state = emp.id * 9301 + 49297
+  function rng() {
+    state = (state * 9301 + 49297) % 233280
+    return state / 233280
+  }
+  function pad(n) { return String(n).padStart(2, '0') }
+  function randTime(hMin, hMax) {
+    const h = Math.floor(hMin + rng() * (hMax - hMin))
+    const m = Math.floor(rng() * 60)
+    const s = Math.floor(rng() * 60)
+    return `${pad(h)}:${pad(m)}:${pad(s)}`
+  }
+
+  const year = 2025
+  const logs = []
+
+  const wasteNotes  = ['一般廢棄物', '資源回收（紙類）', '資源回收（塑膠）', '有機廢棄物', '包裝材料廢棄', '廢棄紙盒', '廚餘回收']
+  const paperNotes  = ['列印文件', '列印月報', '複印資料', '會議資料準備', '列印合約', '表單列印', '列印簡報']
+  const elecNotes   = ['月度電表讀數', '辦公設備用電', '加班用電記錄', '月結電費申報']
+  const travelNotes = ['出差台北', '客戶拜訪（台中）', '出差高雄', '跨部門會議', '業務拜訪（台南）', '出差台南', '赴外縣市開會']
+
+  // 廢棄物：每月 4 筆（上班時、午休、下班時投丞）
+  const wastePerEntry = emp.waste / 48
+  for (let m = 1; m <= 12; m++) {
+    for (let w = 0; w < 4; w++) {
+      const day    = Math.min(28, Math.round(w * 7 + 1 + rng() * 5))
+      const amount = +(wastePerEntry * (0.6 + rng() * 0.8)).toFixed(1)
+      const time   = randTime(8, 18)   // 上班時段投丞
+      logs.push({
+        datetime: `${year}-${pad(m)}-${pad(day)} ${time}`,
+        type: 'waste', color: '#ff7a45', amount, unit: 'kg',
+        note: wasteNotes[Math.floor(rng() * wasteNotes.length)]
+      })
+    }
+  }
+
+  // 紙張：每月 2 筆（工作時段列印）
+  const paperPerEntry = emp.paper / 24
+  for (let m = 1; m <= 12; m++) {
+    for (let w = 0; w < 2; w++) {
+      const day    = Math.min(28, w === 0 ? Math.round(5 + rng() * 8) : Math.round(18 + rng() * 8))
+      const amount = +(paperPerEntry * (0.5 + rng() * 1.0)).toFixed(1)
+      const time   = randTime(9, 17)
+      logs.push({
+        datetime: `${year}-${pad(m)}-${pad(day)} ${time}`,
+        type: 'paper', color: '#36cfc9', amount, unit: '令',
+        note: paperNotes[Math.floor(rng() * paperNotes.length)]
+      })
+    }
+  }
+
+  // 用電：每月 1 筆（每月 28 日下午申報）
+  const elecPerMonth = emp.electricity / 12
+  for (let m = 1; m <= 12; m++) {
+    const amount = Math.round(elecPerMonth * (0.85 + rng() * 0.3))
+    const time   = randTime(13, 17)
+    logs.push({
+      datetime: `${year}-${pad(m)}-28 ${time}`,
+      type: 'electricity', color: '#f6c23e', amount, unit: 'kWh',
+      note: elecNotes[Math.floor(rng() * elecNotes.length)]
+    })
+  }
+
+  // 差旅：依總里程決定筆數（早上出發時間）
+  if (emp.travel > 0) {
+    const tripCount = Math.max(3, Math.min(16, Math.round(emp.travel / 600)))
+    for (let t = 0; t < tripCount; t++) {
+      const m      = Math.min(12, Math.floor(t / tripCount * 12) + 1)
+      const day    = Math.min(28, Math.round(3 + rng() * 24))
+      const amount = Math.max(50, Math.round(emp.travel / tripCount * (0.6 + rng() * 0.8)))
+      const time   = randTime(6, 10)   // 早上出發
+      logs.push({
+        datetime: `${year}-${pad(m)}-${pad(day)} ${time}`,
+        type: 'travel', color: '#5b8ff9', amount, unit: 'km',
+        note: travelNotes[Math.floor(rng() * travelNotes.length)]
+      })
+    }
+  }
+
+  return logs.sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
+}
