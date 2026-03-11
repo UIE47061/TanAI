@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -9,8 +9,11 @@ const props = defineProps({
   trend: { type: String, default: '' },
   trendType: { type: String, default: 'neutral' },
   percentage: { type: Number, default: 0 },
-  index: { type: Number, default: 0 }
+  index: { type: Number, default: 0 },
+  tooltipLines: { type: Array, default: () => [] }
 })
+
+const showTooltip = ref(false)
 
 const circleColor = computed(() => {
   const colors = ['#5b8ff9', '#5ad8a6', '#5d7092', '#f6bd16']
@@ -29,7 +32,14 @@ const displayNumber = computed(() => {
 </script>
 
 <template>
-  <div class="kpi-card">
+  <div class="kpi-card" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+    <!-- Tooltip -->
+    <transition name="fade">
+      <div v-if="showTooltip && tooltipLines.length" class="kpi-tooltip">
+        <div class="tooltip-title">計算說明</div>
+        <div v-for="(line, i) in tooltipLines" :key="i" class="tooltip-line">{{ line }}</div>
+      </div>
+    </transition>
     <div class="kpi-top">
       <h3 class="kpi-title">{{ title }}</h3>
       <span class="material-icons-outlined kpi-more">more_horiz</span>
@@ -70,6 +80,7 @@ const displayNumber = computed(() => {
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0,0,0,.06);
   transition: transform .2s, box-shadow .2s;
+  position: relative;
 }
 .kpi-card:hover {
   transform: translateY(-2px);
@@ -166,4 +177,53 @@ const displayNumber = computed(() => {
   color: #b0b7c3;
   font-weight: 500;
 }
+
+/* ===== Tooltip ===== */
+.kpi-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26, 26, 46, 0.93);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 200px;
+  max-width: 260px;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.kpi-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 6px 6px 6px;
+  border-style: solid;
+  border-color: transparent transparent rgba(26,26,46,0.93) transparent;
+}
+.tooltip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.tooltip-line {
+  font-size: 12px;
+  color: #e2e8f0;
+  line-height: 1.6;
+  padding: 2px 0;
+}
+.tooltip-line::before {
+  content: '• ';
+  color: #5b8ff9;
+}
+.fade-enter-active, .fade-leave-active { transition: opacity .2s, transform .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateX(-50%) translateY(-4px); }
 </style>

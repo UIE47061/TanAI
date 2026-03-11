@@ -19,6 +19,18 @@
 
 ```
 src/
+  assets/
+    styles/
+      variables.css         # 設計 tokens（顏色、圓角、陰影等 CSS 變數）
+      base.css              # 共用樣式（.card、.legend、.pill 等跨頁元件）
+  components/
+    KpiCard.vue             # KPI 指標卡片（含滑鼠停留 Tooltip）
+    SensorCard.vue          # 感測器狀態卡片
+    charts/
+      AreaChart.vue         # 年度碳排趨勢折線圖（含 hover 詳情）
+      BarChart.vue          # 季度排放比較柱狀圖（含 hover 詳情）
+      RadarChart.vue        # 排放類型分布雷達圖
+      GaugeChart.vue        # 減碳目標達成率儀表盤
   views/
     LoginView.vue           # 登入頁（企業端 / 員工端切換）
     admin/
@@ -33,12 +45,9 @@ src/
     employee/
       EmployeeLayout.vue    # 員工端手機版型（底部導覽列）
       DashboardView.vue     # 碳排儀錶板
-      ActionsView.vue       # i 減碳行動
+      ActionsView.vue       # 減碳行動
       LeaderboardView.vue   # 部門排行榜
       ProfileView.vue       # 個人資料
-  components/
-    KpiCard.vue             # KPI 指標卡片
-    SensorCard.vue          # 感測器卡片
   router/
     index.js                # 路由配置
   App.vue

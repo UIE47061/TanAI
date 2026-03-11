@@ -1,0 +1,25 @@
+/* ===== Design Tokens ===== */
+:root {
+  /* Colors */
+  --color-primary:  #5b8ff9;
+  --color-success:  #5ad8a6;
+  --color-warning:  #f6bd16;
+  --color-danger:   #f5222d;
+
+  /* Text */
+  --color-text:       #333;
+  --color-text-muted: #8c8c8c;
+  --color-text-faint: #b0b7c3;
+  --color-heading:    #1a1a2e;
+
+  /* Borders & backgrounds */
+  --color-border:       #eef0f4;
+  --color-border-light: #f0f2f5;
+  --color-bg:           #f5f7fa;
+  --color-bg-hover:     #f9fbff;
+
+  /* Card */
+  --radius-card:  14px;
+  --shadow-card:  0 2px 12px rgba(0, 0, 0, 0.06);
+  --padding-card: 20px;
+}
