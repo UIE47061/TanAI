@@ -11,6 +11,7 @@ const navItems = [
   { icon: 'bolt', label: 'Emissions', route: '/admin/emissions' },
   { icon: 'sensors', label: 'Sensors', route: '/admin/sensors' },
   { icon: 'corporate_fare', label: 'Departments', route: '/admin/departments' },
+  { icon: 'group',           label: 'Employees',   route: '/admin/employees'   },
   { icon: 'bar_chart', label: 'Reports', route: '/admin/reports' },
   { icon: 'eco', label: 'ESG Goals', route: '/admin/esg-goals' },
   { icon: 'settings', label: 'Settings', route: '/admin/settings' },

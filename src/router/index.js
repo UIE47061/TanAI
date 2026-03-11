@@ -42,6 +42,18 @@ const router = createRouter({
           meta: { title: 'Departments' }
         },
         {
+          path: 'employees',
+          name: 'admin-employees',
+          component: () => import('@/views/admin/EmployeesView.vue'),
+          meta: { title: 'Employees' }
+        },
+        {
+          path: 'employees/:id',
+          name: 'admin-employee-detail',
+          component: () => import('@/views/admin/EmployeeDetailView.vue'),
+          meta: { title: 'Employee Detail' }
+        },
+        {
           path: 'reports',
           name: 'admin-reports',
           component: () => import('@/views/admin/ReportsView.vue'),
