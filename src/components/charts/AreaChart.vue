@@ -2,17 +2,27 @@
 import { computed, ref } from 'vue'
 
 const props = defineProps({
-  year:    { type: Number, required: true },
-  months:  { type: Array,  required: true },
-  values:  { type: Array,  required: true },
-  targets: { type: Array,  required: true },
-  max:     { type: Number, default: 200 },
-  unit:    { type: String, default: '公噸 CO₂e' },
-  yTicks:  { type: Array,  default: () => [0, 50, 100, 150, 200] }
+  allData:     { type: Object, required: true },
+  initialYear: { type: Number, default: null  },
+  months:      { type: Array,  required: true },
+  max:         { type: Number, default: 250   },
+  unit:        { type: String, default: '公噸 CO₂e' },
+  yTicks:      { type: Array,  default: () => [0, 50, 100, 150, 200, 250] }
 })
 
-const hoveredIdx  = ref(null)
-const tooltipPos  = ref({ x: 0, y: 0 })
+const availableYears = computed(() =>
+  Object.keys(props.allData).map(Number).sort((a, b) => a - b)
+)
+
+const selectedYear = ref(
+  props.initialYear ?? availableYears.value[availableYears.value.length - 1]
+)
+
+const currentValues  = computed(() => props.allData[selectedYear.value]?.values  ?? [])
+const currentTargets = computed(() => props.allData[selectedYear.value]?.targets ?? [])
+
+const hoveredIdx = ref(null)
+const tooltipPos = ref({ x: 0, y: 0 })
 
 function onPointEnter(e, i) {
   hoveredIdx.value = i
@@ -27,10 +37,10 @@ function onPointLeave() {
 
 const W = 760, H = 220, PX = 50
 
-const stepX = computed(() => (W - PX - 20) / (props.values.length - 1))
+const stepX = computed(() => (W - PX - 20) / (currentValues.value.length - 1))
 
 const areaPoints = computed(() =>
-  props.values.map((v, i) => {
+  currentValues.value.map((v, i) => {
     const x = PX + i * stepX.value
     const y = H - 30 - (v / props.max) * (H - 60)
     return `${x},${y}`
@@ -38,17 +48,17 @@ const areaPoints = computed(() =>
 )
 
 const areaPath = computed(() => {
-  const pts = props.values.map((v, i) => {
+  const pts = currentValues.value.map((v, i) => {
     const x = PX + i * stepX.value
     const y = H - 30 - (v / props.max) * (H - 60)
     return `${x},${y}`
   })
-  const last = PX + (props.values.length - 1) * stepX.value
+  const last = PX + (currentValues.value.length - 1) * stepX.value
   return `M${pts[0]} L${pts.join(' L')} L${last},${H - 30} L${PX},${H - 30} Z`
 })
 
 const targetPoints = computed(() =>
-  props.targets.map((v, i) => {
+  currentTargets.value.map((v, i) => {
     const x = PX + i * stepX.value
     const y = H - 30 - (v / props.max) * (H - 60)
     return `${x},${y}`
@@ -62,15 +72,15 @@ const yTickPositions = computed(() =>
   }))
 )
 
-const total    = computed(() => props.values.reduce((a, b) => a + b, 0))
-const avg      = computed(() => Math.round(total.value / props.values.length))
-const maxVal   = computed(() => Math.max(...props.values))
-const minVal   = computed(() => Math.min(...props.values))
-const maxMonth = computed(() => props.months[props.values.indexOf(maxVal.value)])
-const minMonth = computed(() => props.months[props.values.indexOf(minVal.value)])
+const total    = computed(() => currentValues.value.reduce((a, b) => a + b, 0))
+const avg      = computed(() => Math.round(total.value / currentValues.value.length))
+const maxVal   = computed(() => Math.max(...currentValues.value))
+const minVal   = computed(() => Math.min(...currentValues.value))
+const maxMonth = computed(() => props.months[currentValues.value.indexOf(maxVal.value)])
+const minMonth = computed(() => props.months[currentValues.value.indexOf(minVal.value)])
 const trend    = computed(() => {
-  const first = props.values[0]
-  const last  = props.values[props.values.length - 1]
+  const first = currentValues.value[0]
+  const last  = currentValues.value[currentValues.value.length - 1]
   const pct   = Math.round(Math.abs((last - first) / first) * 100)
   return { pct, down: last < first }
 })
@@ -81,7 +91,12 @@ const trend    = computed(() => {
     <div class="card-head">
       <div>
         <h3 class="card-title">年度碳排趨勢</h3>
-        <span class="area-subtitle">{{ year }} 年月度排放量（單位：{{ unit }}）</span>
+        <span class="area-subtitle">{{ selectedYear }} 年月度排放量（單位：{{ unit }}）</span>
+      </div>
+      <div class="year-selector">
+        <select class="yr-select" :value="selectedYear" @change="e => selectedYear = Number(e.target.value)">
+          <option v-for="y in availableYears" :key="y" :value="y">{{ y }} 年</option>
+        </select>
       </div>
       <div class="legend">
         <span class="legend-item"><span class="dot blue"></span>實際排放量</span>
@@ -106,8 +121,8 @@ const trend    = computed(() => {
         stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"/>
       <polyline :points="areaPoints" fill="none" stroke="#5b8ff9" stroke-width="2.5"
         stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- 資料點：使用 values 直接計算座標，支援 hover -->
-      <circle v-for="(v, i) in values" :key="i"
+      <!-- 資料點：支援 hover，依選擇年份動態渲染 -->
+      <circle v-for="(v, i) in currentValues" :key="i"
         :cx="PX + i * stepX" :cy="H - 30 - (v / max) * (H - 60)"
         :r="hoveredIdx === i ? 6 : 3.5"
         fill="#fff" stroke="#5b8ff9" stroke-width="2"
@@ -154,22 +169,22 @@ const trend    = computed(() => {
           class="chart-tooltip"
           :style="{ left: tooltipPos.x + 14 + 'px', top: tooltipPos.y - 60 + 'px' }"
         >
-          <div class="tt-header">{{ months[hoveredIdx] }}・{{ year }}</div>
+          <div class="tt-header">{{ months[hoveredIdx] }}・{{ selectedYear }}</div>
           <div class="tt-row">
             <span class="tt-dot" style="background:#5b8ff9"></span>
             <span class="tt-label">實際排放</span>
-            <span class="tt-val">{{ values[hoveredIdx] }} 公噸</span>
+            <span class="tt-val">{{ currentValues[hoveredIdx] }} 公噸</span>
           </div>
           <div class="tt-row">
             <span class="tt-dot" style="background:#5ad8a6; border-style: dashed;"></span>
             <span class="tt-label">減碳目標</span>
-            <span class="tt-val">{{ targets[hoveredIdx] }} 公噸</span>
+            <span class="tt-val">{{ currentTargets[hoveredIdx] }} 公噸</span>
           </div>
           <div class="tt-divider"></div>
           <div class="tt-row">
             <span class="tt-label">差異</span>
-            <span class="tt-val" :style="{ color: values[hoveredIdx] > targets[hoveredIdx] ? '#f5222d' : '#52c41a' }">
-              {{ values[hoveredIdx] > targets[hoveredIdx] ? '+' : '' }}{{ values[hoveredIdx] - targets[hoveredIdx] }} 公噸
+            <span class="tt-val" :style="{ color: currentValues[hoveredIdx] > currentTargets[hoveredIdx] ? '#f5222d' : '#52c41a' }">
+              {{ currentValues[hoveredIdx] > currentTargets[hoveredIdx] ? '+' : '' }}{{ currentValues[hoveredIdx] - currentTargets[hoveredIdx] }} 公噸
             </span>
           </div>
         </div>
@@ -180,6 +195,30 @@ const trend    = computed(() => {
 
 <style scoped>
 .area-card    { overflow: hidden; }
+
+/* Year selector */
+.year-selector {
+  display: flex;
+  align-items: center;
+}
+.yr-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #e8eaef;
+  background: #f5f7fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235b8ff9'/%3E%3C/svg%3E") no-repeat right 10px center;
+  background-size: 8px 5px;
+  border-radius: 8px;
+  padding: 5px 28px 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s;
+  outline: none;
+}
+.yr-select:hover  { border-color: #5b8ff9; background-color: #eef3ff; }
+.yr-select:focus  { border-color: #5b8ff9; box-shadow: 0 0 0 3px rgba(91,143,249,.15); }
+
 .area-subtitle {
   font-size: 12px;
   color: #8c8c8c;

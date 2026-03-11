@@ -52,10 +52,21 @@ const kpiData = ref([
 ])
 
 // ── 年度趨勢 ───────────────────────────────────────────────
-const trendYear    = 2025
-const trendMonths  = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov']
-const trendValues  = [160, 140, 170, 145, 135, 155, 125, 130, 128, 118, 105]
-const trendTargets = [155, 150, 145, 140, 135, 130, 125, 120, 115, 110, 105]
+const trendMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov']
+const trendAllData = {
+  2023: {
+    values:  [210, 195, 225, 200, 185, 205, 178, 182, 175, 168, 158],
+    targets: [205, 200, 195, 190, 185, 180, 175, 170, 165, 160, 155]
+  },
+  2024: {
+    values:  [185, 170, 195, 172, 160, 178, 152, 158, 150, 140, 132],
+    targets: [180, 175, 170, 165, 160, 155, 150, 145, 140, 135, 130]
+  },
+  2025: {
+    values:  [160, 140, 170, 145, 135, 155, 125, 130, 128, 118, 105],
+    targets: [155, 150, 145, 140, 135, 130, 125, 120, 115, 110, 105]
+  }
+}
 
 // ── 雷達圖 ─────────────────────────────────────────────────
 const radarLabels       = ['能源', '差旅', '廢棄', '物流', '採購', '其他']
@@ -137,8 +148,9 @@ const dateStr = `${currentDate.toLocaleDateString('en-US', { month: 'long' })} $
     <!-- Row 2: Area Chart + Radar + Activity -->
     <div class="row-2">
       <AreaChart
-        :year="trendYear" :months="trendMonths"
-        :values="trendValues" :targets="trendTargets"
+        :months="trendMonths"
+        :all-data="trendAllData"
+        :initial-year="2025"
       />
       <div class="side-stack">
         <RadarChart :labels="radarLabels" :values="radarValues" :actual-values="radarActualValues"/>
@@ -157,7 +169,7 @@ const dateStr = `${currentDate.toLocaleDateString('en-US', { month: 'long' })} $
 
     <!-- Row 3: Bar Chart + Ranking Table + Gauge -->
     <div class="row-3">
-      <BarChart :data="barData" :year="trendYear"/>
+      <BarChart :data="barData" :year="2025"/>
 
       <div class="card table-card">
         <h3 class="card-title">碳排放排行</h3>
